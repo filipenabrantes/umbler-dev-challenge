@@ -1,13 +1,14 @@
 import { HttpService, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AxiosRequestConfig } from 'axios';
-import whis from 'whis';
+import { RedisService } from 'nestjs-redis';
 
 @Injectable()
 export class DnsService {
   constructor(
     private readonly httpService: HttpService,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
+    private readonly redisService: RedisService,
   ) {
 
   }
@@ -15,20 +16,22 @@ export class DnsService {
   async getDNSInfo(domain: string) {
     const whoisURL = this.configService.get('WHOIS_URL');
 
+    const cachedWhois = await this.redisService.getClient().get(domain);
+    if (cachedWhois) {
+      return JSON.parse(cachedWhois);
+    }
+
     const options: AxiosRequestConfig = {
       params: {
         apiKey: this.configService.get('WHOIS_APIKEY'),
-        domainName: 'umbler.com',
+        domainName: domain,
         outputFormat: 'JSON',
         ip: 1,
         ignoreRawTexts: 1,
       }
     }
-
-    const res = await this.httpService.get(whoisURL, options).toPromise();
-    console.log(res.data.WhoisRecord);
-
-    // const res = await whis('portaliir.com.br')
-    // console.log(res)
+    const { data: WhoisRecord } = await this.httpService.get(whoisURL, options).toPromise();
+    await this.redisService.getClient().set(domain, JSON.stringify(WhoisRecord), 'EX', 86400);
+    return WhoisRecord;
   }
 }
