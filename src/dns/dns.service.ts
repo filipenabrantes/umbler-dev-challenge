@@ -32,7 +32,7 @@ export class DnsService {
     }
     const { data: { WhoisRecord } } = await this.httpService.get(whoisURL, options).toPromise();
     const sanitizedInfo = this.sanitizedInfo(WhoisRecord);
-    // await this.redisService.getClient().set(domain, JSON.stringify(sanitizedInfo), 'EX', 86400);
+    await this.redisService.getClient().set(domain, JSON.stringify(sanitizedInfo), 'EX', 86400);
     return sanitizedInfo;
   }
 
