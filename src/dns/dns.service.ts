@@ -30,8 +30,20 @@ export class DnsService {
         ignoreRawTexts: 1,
       }
     }
-    const { data: WhoisRecord } = await this.httpService.get(whoisURL, options).toPromise();
-    await this.redisService.getClient().set(domain, JSON.stringify(WhoisRecord), 'EX', 86400);
-    return WhoisRecord;
+    const { data: { WhoisRecord } } = await this.httpService.get(whoisURL, options).toPromise();
+    const sanitizedInfo = this.sanitizedInfo(WhoisRecord);
+    // await this.redisService.getClient().set(domain, JSON.stringify(sanitizedInfo), 'EX', 86400);
+    return sanitizedInfo;
+  }
+
+  sanitizedInfo(info: any) {
+    const sanitizedInfo = {
+      'Registrant': info.registrant || '',
+      'Technical Contact': info.technicalContact || {},
+      'Name Servers': info.nameServers?.hostNames || {},
+      'Status': info.status || {},
+      'IPs': info.ips || {},
+    }
+    return sanitizedInfo;
   }
 }
